@@ -58,22 +58,22 @@ router.post(
     }
     // В случае успешной загрузки файла
     else {
-      res.status(200).send("Изображение успешно загружено");
+      res.status(200).json({ mesasge: "Зображення завантажено" });
     }
   }
 );
 
 router.delete("/admin/sliderImage/:imageName", (req, res) => {
   const imageName = req.params.imageName;
-  const imagePath = path.join(__dirname, "../SliderImages/", imageName);
+  const imagePath = path.join(__dirname, "../images/", imageName);
 
   // Проверяем, существует ли файл
   if (fs.existsSync(imagePath)) {
     // Удаляем файл
     fs.unlinkSync(imagePath);
-    res.status(200).send("Изображение успешно удалено");
+    res.status(200).json({ mesasge: "Зображення видалено" });
   } else {
-    res.status(404).send("Изображение не найдено");
+    res.status(404).json({ mesasge: "Зображення не знайдено!" });
   }
 });
 
