@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const downloadImgRouter = require("./helpers/downloadImageRouter.js");
 
 const cookieParser = require("cookie-parser");
 
@@ -20,16 +21,17 @@ const {
   deleteService,
   createMaterial,
   createService,
-} = require("./db/dbOperations/dbOperations.js");
+} = require("./helpers/dbOperations/dbOperations.js");
+
+const { getSliderImagesArray } = require("./helpers/fsOperations.js");
 
 const app = express();
 const port = process.env.PORT;
 
-const staticFolderPath = path.join(__dirname, "SliderImages");
+const staticFolderPath = path.join(__dirname, "images");
 
 app.use(express.json());
-
-app.use("/SliderImages", express.static(staticFolderPath));
+app.use("/images", express.static(staticFolderPath));
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", process.env.CORS_DOMEN); // Разрешить доступ с любых доменов
@@ -42,13 +44,11 @@ app.use((req, res, next) => {
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
 app.get("/", async (req, res) => {
-  fs.readdir(staticFolderPath, (err, files) => {
-    if (err) {
-      return res.status(500).json({ error: "Internal server error" });
-    }
-    getInitialSiteData(req, res, files);
-  });
+  const files = await getSliderImagesArray(staticFolderPath, res);
+  getInitialSiteData(req, res, files);
 });
+
+app.use("/", downloadImgRouter);
 
 app.post("/login", async (req, res) => {
   await checkRequest(req, res);
@@ -56,13 +56,11 @@ app.post("/login", async (req, res) => {
 });
 
 app.get("/admin", checkUserAuth, async (req, res) => {
-  fs.readdir(staticFolderPath, (err, files) => {
-    if (err) {
-      return res.status(500).json({ error: "Internal server error" });
-    }
-    getCPData(req, res, files);
-  });
+  const files = await getSliderImagesArray(staticFolderPath, res);
+  getCPData(req, res, files);
 });
+
+app.post("/admin/sliderImage", async (req, res) => {});
 
 app.get("/prices", async (req, res) => {
   await getPrices(req, res);
@@ -104,7 +102,6 @@ function checkUserAuth(req, res, next) {
   const userLogin = req.signedCookies.userLogin;
 
   if (!userLogin) {
-    res.setHeader("Access-Control-Allow-Origin", process.env.CORS_DOMEN);
     return res.status(401).json({ error: "Необходимо войти в систему" });
   }
   next();

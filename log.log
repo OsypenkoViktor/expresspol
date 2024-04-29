@@ -1,0 +1,11 @@
+App 207653 output: Помилка при отриманні данних Error: Access denied for user 'root'@'localhost' (using password: NO)
+App 207653 output:     at PromisePool.query (/home/posky732/nodevenv/expresspol/20/lib/node_modules/mysql2/promise.js:356:22)
+App 207653 output:     at getInitialSiteData (/home/posky732/expresspol/db/dbOperations/dbOperations.js:80:33)
+App 207653 output:     at /home/posky732/expresspol/index.js:49:5
+App 207653 output:     at FSReqCallback.oncomplete (node:fs:194:23) {
+App 207653 output:   code: 'ER_ACCESS_DENIED_ERROR',
+App 207653 output:   errno: 1045,
+App 207653 output:   sql: undefined,
+App 207653 output:   sqlState: '28000',
+App 207653 output:   sqlMessage: "Access denied for user 'root'@'localhost' (using password: NO)"
+App 207653 output: }
