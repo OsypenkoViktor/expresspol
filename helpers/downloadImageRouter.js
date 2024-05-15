@@ -9,56 +9,53 @@ function checkUserAuth(req, res, next) {
   const userLogin = req.signedCookies.userLogin;
 
   if (!userLogin) {
-    return res.status(401).json({ error: "Необходимо войти в систему" });
+    return res.status(401).json({ error: "Authentification required!" });
   }
   next();
 }
 
-// Настройка multer для сохранения файлов в папку SliderImages
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "SliderImages/");
   },
   filename: function (req, file, cb) {
-    cb(null, file.originalname); // Сохранение с оригинальным именем
+    cb(null, file.originalname);
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  // Разрешенные типы файлов
+
   const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
 
-  // Проверяем тип файла
   if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true); // Принимаем файл
+    cb(null, true);
   } else {
-    logger.error("Помилка типу при спробі завантаження зображення.");
-    cb(new Error("Недопустимый тип файла")); // Отклоняем файл
+    logger.error("Type error occurred while attempting to load the image.");
+    cb(new Error("this image type is not allowed")); 
   }
 };
 
 const upload = multer({ storage: storage, fileFilter: fileFilter });
 
-// Маршрут для загрузки изображений
+
 router.post(
   "/admin/sliderImage",
   checkUserAuth,
   upload.single("image"),
   (req, res) => {
-    // Если Multer обнаружил ошибку при загрузке файла
+
     if (req.fileValidationError) {
       return res.status(400).send(req.fileValidationError);
     }
-    // Если произошла другая ошибка (например, ошибка при сохранении файла)
     else if (req.fileError) {
-      logger.error("Помилка при спробі завантаження зображення.", {
+      logger.error("Type error occurred while attempting to load the image.", {
         error: req.fileError,
       });
       return res.status(500).send(req.fileError);
     }
-    // В случае успешной загрузки файла
     else {
-      res.status(200).json({ mesasge: "Зображення завантажено" });
+      res.status(200).json({ mesasge: "Image uploaded successfully" });
     }
   }
 );
@@ -71,9 +68,9 @@ router.delete("/admin/sliderImage/:imageName", (req, res) => {
   if (fs.existsSync(imagePath)) {
     // Удаляем файл
     fs.unlinkSync(imagePath);
-    res.status(200).json({ mesasge: "Зображення видалено" });
+    res.status(200).json({ mesasge: "Image has been deleted." });
   } else {
-    res.status(404).json({ mesasge: "Зображення не знайдено!" });
+    res.status(404).json({ mesasge: "Image not found." });
   }
 });
 
