@@ -11,13 +11,13 @@ async function getSliderImagesArray(staticFolderPath, res) {
     const files = await readdir(staticFolderPath);
     return files;
   } catch (error) {
-    logger.error("Не вдалося отримати список зображень слайдеру", {
+    logger.error("Cant get slider images list", {
       error: error.message,
       stack: error.stack,
     });
     res
       .status(500)
-      .json({ error: "Не вдалося отримати список зображень слайдеру" });
+      .json({ error: "Cant get slider images list" });
   }
 }
 
