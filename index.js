@@ -34,10 +34,10 @@ app.use(express.json());
 app.use("/images", express.static(staticFolderPath));
 
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", process.env.CORS_DOMEN); // Разрешить доступ с любых доменов
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE,PATCH"); // Разрешить методы запросов
+  res.setHeader("Access-Control-Allow-Origin", process.env.CORS_DOMEN);
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE,PATCH");
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization"); // Разрешить заголовки запросов
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   next();
 });
 
@@ -102,7 +102,7 @@ function checkUserAuth(req, res, next) {
   const userLogin = req.signedCookies.userLogin;
 
   if (!userLogin) {
-    return res.status(401).json({ error: "Необходимо войти в систему" });
+    return res.status(401).json({ error: "Unauthorized" });
   }
   next();
 }
