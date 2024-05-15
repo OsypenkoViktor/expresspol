@@ -2,11 +2,7 @@ const db = require("../db.js");
 const bcrypt = require("bcrypt");
 const logger = require("../../logger.js");
 
-/**
- * Перевірка, чи відповідає запрос потребам серверу
- * @param {Request} req - запит експреса
- * @param {Response} res - відповідь сервера
- */
+
 async function checkRequest(req, res) {
   try {
     const { login, password } = req.body;
@@ -14,66 +10,53 @@ async function checkRequest(req, res) {
     if (!login || !password) {
       return res
         .status(400)
-        .json({ error: "Необхідно вказати логін і пароль" });
+        .json({ error: "Login and password fields required" });
     }
   } catch (error) {
     logger.error(
-      "Помилка в функції перевірки паролю (хлам який треба рефакторити)",
+      "error while checking password",
       {
         error: error.message,
         stack: error.stack,
       }
     );
-    res.status(500).json({ error: "Внутрішня помилка серверу" });
+    res.status(500).json({ error: "Server error" });
   }
 }
 
-/**
- * Логіка аутентифікації користувача на сервері
- * @param {Request} req - запит експреса
- * @param {Response} res - відповідь сервера
- */
+
 async function userAuth(req, res) {
   const { login, password } = req.body;
   if (!login || !password) {
-    res.status(400).json({ error: "не вказані данні для входу" });
+    res.status(400).json({ error: "no login data" });
   }
   try {
-    // Проверяем, есть ли пользователь с таким логином в базе данных
     const [rows] = await db.query("SELECT * FROM users WHERE login = ?", [
       login,
     ]);
 
     if (rows.length === 0) {
-      // Если пользователь с таким логином не найден, отправляем ошибку
       return res
         .status(404)
-        .json({ error: "Користувач з таким логіном не знайдений." });
+        .json({ error: "Cant find user login in data base." });
     }
 
-    // Сравниваем введенный пароль с хешированным паролем из базы данных
     const user = rows[0];
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
-      // Если пароли не совпадают, отправляем ошибку
-      return res.status(401).json({ error: "Невірний пароль або логін" });
+      return res.status(401).json({ error: "Incorrect password or login" });
     }
     const oneHour = 3600000;
     res.cookie("userLogin", user.login, { signed: true, maxAge: oneHour });
-    res.status(200).json({ message: "Аутентифікація успішна" });
+    res.status(200).json({ message: "Authenticated" });
   } catch (error) {
-    logger.error("Помилка при аутентифікації користувача: " + error.message);
-    res.status(500).json({ error: "Внутрішня помилка серверу" });
+    logger.error("Auth error: " + error.message);
+    res.status(500).json({ error: "Server error" });
   }
 }
 
-/**
- * Відправка інформації необхідної для завантаження сторінки.
- * @param {*} req
- * @param {*} res об'ект з налаштуваннями, контактами для головної сторінки сайту
- * @returns
- */
+
 async function getInitialSiteData(req, res, sliderImgList) {
   const resJSON = {
     settings: {},
@@ -89,14 +72,14 @@ async function getInitialSiteData(req, res, sliderImgList) {
     if (settings.length === 0 || contacts.length === 0) {
       return res
         .status(404)
-        .json({ error: "Налаштування сторінки не знайдено" });
+        .json({ error: "Site settings not found" });
     }
     res.status(200).json(resJSON);
   } catch (error) {
     logger.error(
-      "Помилка при отриманні загальних данних сторінки: " + error.message
+      "Error occured while attenpting to load initial site data" + error.message
     );
-    res.status(500).json({ error: "Внутрішня помилка серверу" });
+    res.status(500).json({ error: "Server error" });
   }
 }
 
@@ -112,11 +95,11 @@ async function getCPData(req, res, exampleImgs) {
     const [settings, settingsFields] = await db.query("SELECT * FROM settings");
     resJSON.settings = settings;
     if (contacts.length === 0 || settings.length === 0) {
-      return res.status(404).json({ error: "помилка при завантаженні данних" });
+      return res.status(404).json({ error: "Error occured while attenpting to load control panel data" });
     }
     res.status(200).json(resJSON);
   } catch (error) {
-    logger.error("Помилка завантаження данних для контрольної панелі:", {
+    logger.error("Error occured while attenpting to load control panel data", {
       error: error.message,
       stack: error.stack,
     });
@@ -128,22 +111,18 @@ async function updateSiteData(req, res) {
   if (!email || !phone || !facebook) {
     res
       .status(400)
-      .json({ error: "Не всі необхідні данні для оновлення були відправлені" });
+      .json({ error: "missing data to update" });
   }
   try {
-    // Начало транзакции
     await db.query("START TRANSACTION");
 
-    // Выполнение первого запроса
     await db.query(
       "UPDATE CONTACTS SET VALUE = ? WHERE TYPE = 'PhoneNumber'",
       phone
     );
 
-    // Выполнение второго запроса
     await db.query("UPDATE CONTACTS SET VALUE = ? WHERE TYPE = 'Email'", email);
 
-    // Выполнение третьего запроса
     await db.query(
       "UPDATE CONTACTS SET VALUE = ? WHERE TYPE = 'Facebook'",
       facebook
@@ -155,11 +134,10 @@ async function updateSiteData(req, res) {
     );
 
     await db.query("COMMIT");
-    res.status(201).json({ message: "Данні успішно оновлено" });
+    res.status(201).json({ message: "Updated" });
   } catch (error) {
-    // Если произошла ошибка, откатываем транзакцию
     await db.query("ROLLBACK");
-    logger.error("Помилка при оновленні контактів сайту", {
+    logger.error("Error occured while attenpting to update control panel data", {
       error: error.message,
       stack: error.stack,
     });
@@ -176,11 +154,11 @@ async function getPrices(req, res) {
     responsePricesJSSON.services = servicesPrices;
     res.status(200).json(responsePricesJSSON);
   } catch (error) {
-    logger.error("Помилка при отриманні цін", {
+    logger.error("Error occured while fetching price data", {
       error: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ error: "помилка при зчитуванні цін" });
+    res.status(500).json({ error: "Error occured while fetching price data" });
   }
 }
 
@@ -189,27 +167,27 @@ async function createMaterial(req, res) {
     const { name, price, description } = req.body;
     if (!name || !price || !description) {
       res.status(400).json({
-        error: "Не всі необхідні данні для оновлення були відправлені",
+        error: "missing material data",
       });
-      logger.info("Спроба створити матеріал з пустим полем");
+      logger.info("missing material data");
     }
     const resultDB = await db.query(
       "INSERT INTO MATERIALS (name,price,description) VALUES (?,?,?)",
       [name, price, description]
     );
     if (resultDB[0].affectedRows) {
-      res.status(201).json({ message: "Матеріал успішно створено." });
+      res.status(201).json({ message: "Material created." });
     } else {
-      res.status(400).json({ message: "Не вдалося створити матеріал." });
+      res.status(400).json({ message: "Material not created." });
     }
   } catch (error) {
-    logger.error("Помилка при створенні матеріалу:", {
+    logger.error("Material not created:", {
       error: error.message,
       stack: error.stack,
     }); // Запись ошибки в лог
     res.status(500).json({
-      message: "Во время выполнения операции произошла ошибка.",
-      error: error.message || "Некоторые детали ошибки отсутствуют.",
+      message: "Server error.",
+      error: error.message || "Server error.",
     });
   }
 }
@@ -219,19 +197,19 @@ async function createService(req, res) {
     const { name, price, description } = req.body;
     if (!name || !price || !description) {
       res.status(400).json({
-        error: "Не всі необхідні данні для оновлення були відправлені",
+        error: "Missing data",
       });
-      logger.info("Спроба створити сервіс з пустим полем");
+      logger.info("Missing data for new service");
     }
     const resultDB = await db.query(
       "INSERT INTO SERVICES (name,price,description) VALUES (?,?,?)",
       [name, price, description]
     );
     if (resultDB[0].affectedRows) {
-      res.status(201).json({ message: "Сервіс успішно створено." });
+      res.status(201).json({ message: "Created" });
     }
   } catch (error) {
-    logger.error("Помилка при спробі створення сервісу:", {
+    logger.error("Service not created:", {
       error: error.message,
       stack: error.stack,
     });
@@ -243,21 +221,21 @@ async function updateMaterial(req, res) {
     const { id, name, price, description } = req.body;
     if (!name || !price || !description) {
       res.status(400).json({
-        error: "Не всі необхідні данні для оновлення були відправлені",
+        error: "Not all necessary data for update were provided",
       });
-      logger.info("Спроба оновити матеріал з пустим полем");
+      logger.info("Attempt to update material with empty field");
     }
     const resultDB = await db.query(
       "UPDATE MATERIALS SET name=?,price=?,description=? WHERE id = ?",
       [name, price, description, id]
     );
-    res.status(200).json({ message: `Матеріал ${name} успішно змінений.` });
+    res.status(200).json({ message: `Material ${name} successfully updated.` });
   } catch (error) {
-    logger.error("Помилка при спробі змінити матеріал", {
+    logger.error("Error while attempting to update material", {
       error: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ error: "Помилка при спробі оновлення матеріалу" });
+    res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -266,22 +244,22 @@ async function deleteMaterial(req, res) {
     const { id } = req.body;
     if (!id) {
       res.status(400).json({
-        error: "Не всі необхідні данні для оновлення були відправлені",
+        error: "Not all necessary data for update were provided",
       });
-      logger.info("Спроба видалити матеріал з пустим полем id");
+      logger.info("Attempt to delete material with empty id field");
     }
     const [results] = await db.query("DELETE FROM MATERIALS WHERE id= ?", [id]);
     if (results.affectedRows === 0) {
-      res.status(404).json({ message: "Запис не знайдено в бд" });
+      res.status(404).json({ message: "Record not found in database" });
     } else {
-      res.status(200).json({ message: "Запис успішно видалений" });
+      res.status(200).json({ message: "Record successfully deleted" });
     }
   } catch (error) {
-    logger.error("Помилка при видаленні матеріалу", {
+    logger.error("Error while deleting material", {
       error: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ error: "Внутрішня помилка серверу" });
+    res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -290,22 +268,22 @@ async function deleteService(req, res) {
     const { id } = req.body;
     if (!id) {
       res.status(400).json({
-        error: "Не всі необхідні данні для оновлення були відправлені",
+        error: "Not all necessary data for update were provided",
       });
-      logger.info("Спроба видалити сервіс з пустим полем id");
+      logger.info("Attempt to delete service with empty id field");
     }
     const [results] = await db.query("DELETE FROM SERVICES WHERE id = ?", [id]);
     if (results.affectedRows === 0) {
-      res.status(404).json({ message: "Запис не знайдено в бд" });
+      res.status(404).json({ message: "Record not found in database" });
     } else {
-      res.status(200).json({ message: "Запис успішно видалений" });
+      res.status(200).json({ message: "Record successfully deleted" });
     }
   } catch (error) {
-    logger.error("Помилка при спробі видалення сервісу", {
+    logger.error("Error while attempting to delete service", {
       error: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ error: "Внутрішня помилка серверу" });
+    res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -314,22 +292,23 @@ async function updateService(req, res) {
     const { id, name, price, description } = req.body;
     if (!name || !price || !description || !id) {
       res.status(400).json({
-        error: "Не всі необхідні данні для оновлення були відправлені",
+        error: "Not all necessary data for update were provided",
       });
-      logger.info("Спроба обновити сервіс з пустим полем");
+      logger.info("Attempt to update service with empty field");
     }
     const resultDB = await db.query(
       "UPDATE SERVICES SET name=?,price=?,description=? WHERE id = ?",
       [name, price, description, id]
     );
-    res.status(200).json({ message: `Сервіс ${name} успішно оновлено.` });
+    res.status(200).json({ message: `Service ${name} successfully updated.` });
   } catch (error) {
-    logger.error("Помилка при стробі оновлення сервісу", {
+    logger.error("Error while attempting to update service", {
       error: error.message,
       stack: error.stack,
     });
   }
 }
+
 
 module.exports = {
   checkRequest,
